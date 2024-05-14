@@ -1,19 +1,26 @@
 CC = gcc
-CFLAGS = -Wall -Wextra -g
-LIBS = -lpcap
+CFLAGS = -Wall -Wextra -g -Iinclude
+LDFLAGS = -lpcap -lncurses
 
-SRC = src/main.c src/packet_capture.c src/packet_analysis.c
-INCLUDE = -Iinclude
-
-OBJS = $(SRC:.c=.o)
+SRC = src/main.o src/packet_capture.o src/packet_analysis.o src/dashboard.o
+OBJ = $(SRC)
 
 all: analyzer
 
-analyzer: $(OBJS)
-	$(CC) $(CFLAGS) $(OBJS) -o analyzer $(LIBS)
+analyzer: $(OBJ)
+	$(CC) $(OBJ) -o analyzer $(LDFLAGS)
 
-%.o: %.c
-	$(CC) $(CFLAGS) $(INCLUDE) -c $< -o $@
+src/main.o: src/main.c
+	$(CC) $(CFLAGS) -c src/main.c -o src/main.o
+
+src/packet_capture.o: src/packet_capture.c
+	$(CC) $(CFLAGS) -c src/packet_capture.c -o src/packet_capture.o
+
+src/packet_analysis.o: src/packet_analysis.c
+	$(CC) $(CFLAGS) -c src/packet_analysis.c -o src/packet_analysis.o
+
+src/dashboard.o: src/dashboard.c
+	$(CC) $(CFLAGS) -c src/dashboard.c -o src/dashboard.o
 
 clean:
-	rm -f $(OBJS) analyzer
+	rm -f $(OBJ) analyzer

@@ -1,7 +1,18 @@
 #include "packet_capture.h"
 #include "packet_analysis.h"
+#include "dashboard.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <netinet/ip.h>
+#include <netinet/tcp.h>
+#include <netinet/udp.h>
+#include <net/ethernet.h>
+
+static int packet_count = 0;
+static int tcp_count = 0;
+static int udp_count = 0;
+static int other_count = 0;
+static int total_bytes = 0;
 
 pcap_t* initialize_packet_capture() {
   char errbuf[PCAP_ERRBUF_SIZE];
@@ -45,17 +56,34 @@ void start_packet_capture(pcap_t *pcap_handle, const char *filter_expr) {
   }
 
   printf("Starting packet capture with filter: %s\n", filter_expr);
+  init_dashboard();
   pcap_loop(pcap_handle, 0, packet_handler, NULL);
 }
 
 void stop_packet_capture(pcap_t *pcap_handle) {
   pcap_close(pcap_handle);
+  end_dashboard();
   printf("Packet Capture stopped \n");
 }
 
 void packet_handler(u_char *user_data, const struct pcap_pkthdr *pkthdr, const u_char *packet) {
-  // for now just print packet length
-  printf("Packet Captured: Length: %d\n", pkthdr->len);
+  packet_count++;
+  total_bytes += pkthdr->len;
 
+  struct ether_header *eth_header = (struct ether_header *)packet;
+  if (ntohs(eth_header->ether_type) == ETHERTYPE_IP) {
+    struct ip *ip_header = (struct ip *)(packet + sizeof(struct ether_header));
+    if (ip_header->ip_p == IPPROTO_TCP) {
+      tcp_count++;
+    } else if (ip_header->ip_p == IPPROTO_UDP) {
+      udp_count++;
+    } else {
+      other_count++;
+    }
+  } else {
+    other_count++;
+  }
+  
   analyze_packet(packet, *pkthdr);
+  update_dashboard(packet_count, tcp_count, udp_count, other_count, total_bytes);
 }
